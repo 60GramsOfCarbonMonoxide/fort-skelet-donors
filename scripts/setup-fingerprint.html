@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-7mqpgeuCRNOJsHDTmxo8kZbAO8Hz8WYi15ipJYoBxQE='; style-src 'sha256-lXrzIh6SGa6ChXECq3mLNB9YdA0AxpCP77yCfCwIXSo='; connect-src 'none'; form-action 'none'; base-uri 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-oW4BF4Gy2kNh4iwjJuVhQestPDS83V6FBivkIR7ww9s='; style-src 'sha256-lXrzIh6SGa6ChXECq3mLNB9YdA0AxpCP77yCfCwIXSo='; connect-src 'none'; form-action 'none'; base-uri 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex, nofollow">
@@ -37,6 +37,9 @@
   </div>
   <label for="fingerprint">SHA-256 fingerprint</label>
   <output id="fingerprint" aria-live="polite"></output>
+  <label for="proof">Fingerprint checksum</label>
+  <output id="proof" aria-live="polite"></output>
+  <p>The checksum is SHA-256 of the exact text ko-fi-fingerprint-proof-v1: followed by the lowercase fingerprint. Return both displayed values for an independent consistency check.</p>
   <dl>
     <div><dt>Characters (Unicode code points)</dt><dd id="characters">—</dd></div>
     <div><dt>UTF-8 bytes</dt><dd id="bytes">—</dd></div>
@@ -51,6 +54,7 @@
       const token = document.getElementById("token");
       const calculate = document.getElementById("calculate");
       const fingerprint = document.getElementById("fingerprint");
+      const proof = document.getElementById("proof");
       const characters = document.getElementById("characters");
       const byteCount = document.getElementById("bytes");
       const status = document.getElementById("status");
@@ -60,6 +64,7 @@
         generation += 1;
         token.value = "";
         fingerprint.textContent = "";
+        proof.textContent = "";
         characters.textContent = "—";
         byteCount.textContent = "—";
         calculate.disabled = false;
@@ -72,6 +77,7 @@
         let value = token.value;
         token.value = "";
         fingerprint.textContent = "";
+        proof.textContent = "";
         characters.textContent = "—";
         byteCount.textContent = "—";
         if (value.length === 0) {
@@ -86,7 +92,12 @@
         try {
           const digest = await crypto.subtle.digest("SHA-256", encoded);
           if (current !== generation) return;
-          fingerprint.textContent = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+          const reported = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+          const proofInput = new TextEncoder().encode("ko-fi-fingerprint-proof-v1:" + reported);
+          const proofDigest = await crypto.subtle.digest("SHA-256", proofInput);
+          if (current !== generation) return;
+          fingerprint.textContent = reported;
+          proof.textContent = Array.from(new Uint8Array(proofDigest), byte => byte.toString(16).padStart(2, "0")).join("");
           characters.textContent = String(length);
           byteCount.textContent = String(encoded.byteLength);
           status.textContent = "Fingerprint ready. Password field is empty.";
