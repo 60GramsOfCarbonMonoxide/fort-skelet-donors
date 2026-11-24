@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
-      changed: ${{ steps.feed.outputs.changed }}
+      changed: ${{ steps.feed.outputs.changed == 'true' || github.event_name == 'push' }}
     steps:
       - name: Check out public feed tooling
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -65,8 +65,13 @@ jobs:
           --previous "$PUBLIC_PAGES_URL"
           --output _site/donors.json
           --github-output "$GITHUB_OUTPUT"
-      - name: Upload changed public feed only
-        if: steps.feed.outputs.changed == 'true'
+      - name: Include temporary browser-local fingerprint helper when present
+        run: |
+          if [ -f scripts/setup-fingerprint.html ]; then
+            cp scripts/setup-fingerprint.html _site/setup-fingerprint.html
+          fi
+      - name: Upload validated public artifact
+        if: steps.feed.outputs.changed == 'true' || github.event_name == 'push'
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: _site
