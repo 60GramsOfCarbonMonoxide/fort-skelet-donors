@@ -12,7 +12,7 @@ The live VRChat-trusted output is:
 
 The Supabase source and this GitHub Pages mirror are deployed. On November 24, 2026, the trusted output returned HTTP 200, `Content-Type: application/json`, and a valid schema-1 feed with zero verified donors. All jobs succeeded in [the verified deployment run, attempt 2](https://github.com/60GramsOfCarbonMonoxide/fort-skelet-donors/actions/runs/45501666338/attempts/2). The initial attempt ran before Pages was enabled; it succeeded after Pages activation and a rerun.
 
-This verifies public hosting, not an automatic donor badge end to end. Ko-fi webhook configuration and an actual provider delivery, the first verified payer/VRChat identity link with consent, and a real VRChat download and badge check remain pending. An empty donor list is valid and grants no badge.
+The Ko-fi provider connection and a native Donation test are also verified: on November 24, 2026, the receiver returned actual HTTP 200 and recorded one positive Donation receipt. The test payer is unlinked, so the public donor list remains empty and grants no badge. The first verified payer/VRChat identity link with consent, publication of that verified donor, and a real VRChat download and badge check remain pending. Automatic badges are not verified end to end.
 
 This standalone public repository contains only the mirror tooling. Ko-fi webhook verification, donor identity linking and public badge consent belong to the private backend; no account credentials, payer records or private administration documents are included here.
 
@@ -32,12 +32,12 @@ The jobs use GitHub's built-in, short-lived `GITHUB_TOKEN` and Pages OIDC permis
 ## Synchronization behavior
 
 - `workflow_dispatch` supports initial deployment and manual refresh.
-- Pushes to `main` trigger a run only when `.github/workflows/sync-donors.yml`, `scripts/**`, `tests/**`, or `actions-pins.json` changes. README-only updates and timestamp-only heartbeat commits are outside that filter.
+- Pushes to `main` trigger a run only when `.github/workflows/sync-donors.yml`, `scripts/**`, `tests/**`, or `actions-pins.json` changes. These source changes redeploy the validated artifact even when the donor set is unchanged, so published content follows the reviewed source. README-only updates and timestamp-only heartbeat commits are outside that filter.
 - The cron expression requests a run every five minutes. GitHub may delay scheduled runs; this is not an exact delivery deadline. See [GitHub's scheduled workflow documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
 - A single concurrency group and `cancel-in-progress: false` prevent an active publication from being cancelled by the next run.
 - The script fetches the current **deployed Pages feed** for comparison. It does not rely on a stale checkout copy or write-generated-file commits.
 - The donor list is deduplicated and sorted. Changes only to source timestamp, list order, or duplicate entries do not trigger deployment.
-- When the donor set is unchanged, the prior published `generatedUtc` is retained and the deploy job is skipped.
+- When the donor set is unchanged, the prior published `generatedUtc` is retained. Scheduled and manual runs skip deployment; filtered source pushes still deploy the validated artifact without changing that timestamp.
 - A missing previous Pages file (HTTP 404) bootstraps the first publication, including an empty donor list. Other network errors, redirects, bad schemas or invalid JSON fail the job and leave the last deployed artifact in place.
 - Only `_site/donors.json` is uploaded. There is no public website containing donor details or payment history.
 
@@ -49,7 +49,7 @@ The independent `maintenance` job uses its native, short-lived `GITHUB_TOKEN` an
 
 Recent repository commits postpone maintenance. A missing heartbeat file does not cause a commit on every run: a recently created repository waits until its last commit is 30 days old. Empty repositories are skipped, and a concurrent heartbeat update is re-read instead of being overwritten or duplicated. The API updates one file on the current branch tree, preserving source files; checkout still uses `persist-credentials: false`. No token is stored in git configuration or a committed file.
 
-Maintenance runs independently of Supabase availability. It does **not** change the donor feed timestamp or trigger a Pages deployment; donor membership must still change for the deploy job to run. The workflow supports schedule, manual, and the filtered `main` push events described above. The heartbeat path is excluded from the push filter, and commits made with `GITHUB_TOKEN` do not trigger ordinary recursive workflow runs. See [GitHub's token behavior](https://docs.github.com/en/actions/concepts/security/github_token#when-github_token-triggers-workflow-runs).
+Maintenance runs independently of Supabase availability. It does **not** change the donor feed timestamp or trigger a Pages deployment. Scheduled and manual runs deploy only when donor membership changes; filtered `main` source pushes redeploy the validated artifact as described above. The heartbeat path is excluded from the push filter, and commits made with `GITHUB_TOKEN` do not trigger ordinary recursive workflow runs. See [GitHub's token behavior](https://docs.github.com/en/actions/concepts/security/github_token#when-github_token-triggers-workflow-runs).
 
 If repository rules block the maintenance commit, the job will fail rather than bypass branch protection. Permit this maintenance write in the isolated repository or make a real default-branch commit manually before the inactivity limit. A workflow already disabled by GitHub must first be re-enabled from its Actions page; a disabled workflow cannot run its own heartbeat. Scheduling remains subject to GitHub service availability and policy changes.
 

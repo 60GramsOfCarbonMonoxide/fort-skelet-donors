@@ -65,11 +65,6 @@ jobs:
           --previous "$PUBLIC_PAGES_URL"
           --output _site/donors.json
           --github-output "$GITHUB_OUTPUT"
-      - name: Include temporary browser-local fingerprint helper when present
-        run: |
-          if [ -f scripts/setup-fingerprint.html ]; then
-            cp scripts/setup-fingerprint.html _site/setup-fingerprint.html
-          fi
       - name: Upload validated public artifact
         if: steps.feed.outputs.changed == 'true' || github.event_name == 'push'
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
