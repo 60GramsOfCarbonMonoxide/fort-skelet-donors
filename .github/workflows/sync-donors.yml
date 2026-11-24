@@ -1,0 +1,85 @@
+name: Sync verified donor badge feed
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-donors.yml'
+      - 'scripts/**'
+      - 'tests/**'
+      - 'actions-pins.json'
+  workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: fort-skelet-public-donor-pages
+  cancel-in-progress: false
+
+jobs:
+  maintenance:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Check out maintenance tooling without stored credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate maintenance logic
+        run: python3 -B -m unittest discover -s tests -p test_heartbeat.py -v
+      - name: Maintain repository activity only when 30 days old
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: python3 -B scripts/heartbeat.py --branch "$DEFAULT_BRANCH"
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      changed: ${{ steps.feed.outputs.changed }}
+    steps:
+      - name: Check out public feed tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate sync logic
+        run: python3 -B -m unittest discover -s tests -v
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - name: Fetch and validate only public donor names
+        id: feed
+        env:
+          PUBLIC_SOURCE_URL: https://zfgdvgrvuocshtxrclpj.supabase.co/functions/v1/fort-kofi/donors.json
+          PUBLIC_PAGES_URL: https://60gramsofcarbonmonoxide.github.io/fort-skelet-donors/donors.json
+        run: >-
+          python3 -B scripts/sync_donors.py
+          --source "$PUBLIC_SOURCE_URL"
+          --previous "$PUBLIC_PAGES_URL"
+          --output _site/donors.json
+          --github-output "$GITHUB_OUTPUT"
+      - name: Upload changed public feed only
+        if: steps.feed.outputs.changed == 'true'
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: _site
+          retention-days: 1
+  deploy:
+    if: needs.build.outputs.changed == 'true'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy validated public feed
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
