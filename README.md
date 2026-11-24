@@ -1,26 +1,30 @@
 # Fort скелет public donor feed
 
-This directory is the complete, isolated repository content for `60GramsOfCarbonMonoxide/fort-skelet-donors`. Publish **only these files** to that new public repository. Do not copy the parent Ko-fi bridge directory, private database, webhook payloads, Unity project, or deployment credentials.
+This is the complete, isolated public mirror repository `60GramsOfCarbonMonoxide/fort-skelet-donors`. Keep it limited to these mirror files. Do not copy the parent Ko-fi bridge directory, private database, webhook payloads, Unity project, or deployment credentials.
 
 The workflow reads the public, names-only feed from:
 
 `https://zfgdvgrvuocshtxrclpj.supabase.co/functions/v1/fort-kofi/donors.json`
 
-The intended VRChat-trusted output is:
+The live VRChat-trusted output is:
 
 `https://60gramsofcarbonmonoxide.github.io/fort-skelet-donors/donors.json`
 
-The Supabase source is deployed and its public schema-1 feed has returned HTTP 200 with zero verified donors. This prepared mirror is **awaiting its first verified GitHub Pages deployment**. Repository contents and a configured world URL do not prove that the trusted output is hosted or downloadable. Confirm the workflow deployment and public JSON URL before claiming the mirror is live, and verify the world's actual download separately.
+The Supabase source and this GitHub Pages mirror are deployed. On November 24, 2026, the trusted output returned HTTP 200, `Content-Type: application/json`, and a valid schema-1 feed with zero verified donors. All jobs succeeded in [the verified deployment run, attempt 2](https://github.com/60GramsOfCarbonMonoxide/fort-skelet-donors/actions/runs/45501666338/attempts/2). The initial attempt ran before Pages was enabled; it succeeded after Pages activation and a rerun.
+
+This verifies public hosting, not an automatic donor badge end to end. Ko-fi webhook configuration and an actual provider delivery, the first verified payer/VRChat identity link with consent, and a real VRChat download and badge check remain pending. An empty donor list is valid and grants no badge.
 
 This standalone public repository contains only the mirror tooling. Ko-fi webhook verification, donor identity linking and public badge consent belong to the private backend; no account credentials, payer records or private administration documents are included here.
 
-## Enable the isolated repository
+## Repository setup reference
+
+The initial repository and Pages setup above is complete for this deployment. These steps describe how to reproduce or review it:
 
 1. Sign in to GitHub and create the public repository `fort-skelet-donors` under `60GramsOfCarbonMonoxide`. If the GitHub connector is limited to selected repositories, grant it access to this new isolated repository before using it to commit the prepared files.
 2. Commit this directory's contents, preserving `.github/workflows/sync-donors.yml`, `scripts/`, `tests/`, and the action pin record. The workflow must exist on the default branch for scheduled runs.
 3. In repository **Settings → Pages → Build and deployment**, select **GitHub Actions**. Do not configure a custom domain: the intended trusted host is `*.github.io`.
 4. Ensure the public Supabase feed returns the documented JSON contract with HTTP 200 and `Content-Type: application/json` without any API key or authorization header. Only verified, consented donor display names may appear there.
-5. Open **Actions → Sync verified donor badge feed → Run workflow** to bootstrap the first deployment.
+5. Open **Actions → Sync verified donor badge feed → Run workflow** to bootstrap or refresh a deployment. A push to `main` that changes the workflow, scripts, tests, or action pins also triggers a run.
 6. Confirm the `deploy` job succeeded and the output URL serves the expected JSON. The intended URL is already saved in both Unity scenes; verify an actual VRChat download separately before claiming badge delivery works.
 
 The jobs use GitHub's built-in, short-lived `GITHUB_TOKEN` and Pages OIDC permissions. There is **no personal access token**, Supabase key, Ko-fi secret, or manually stored Actions secret. The independent maintenance job alone has `contents: write` to update one timestamp-only heartbeat file; the feed build retains read permission. Pages is deployed directly from an artifact, rather than by committing donor data back to the repository. Required deployment permissions and the `github-pages` environment follow [GitHub's custom Pages workflow documentation](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).
@@ -28,6 +32,7 @@ The jobs use GitHub's built-in, short-lived `GITHUB_TOKEN` and Pages OIDC permis
 ## Synchronization behavior
 
 - `workflow_dispatch` supports initial deployment and manual refresh.
+- Pushes to `main` trigger a run only when `.github/workflows/sync-donors.yml`, `scripts/**`, `tests/**`, or `actions-pins.json` changes. README-only updates and timestamp-only heartbeat commits are outside that filter.
 - The cron expression requests a run every five minutes. GitHub may delay scheduled runs; this is not an exact delivery deadline. See [GitHub's scheduled workflow documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
 - A single concurrency group and `cancel-in-progress: false` prevent an active publication from being cancelled by the next run.
 - The script fetches the current **deployed Pages feed** for comparison. It does not rely on a stale checkout copy or write-generated-file commits.
@@ -44,7 +49,7 @@ The independent `maintenance` job uses its native, short-lived `GITHUB_TOKEN` an
 
 Recent repository commits postpone maintenance. A missing heartbeat file does not cause a commit on every run: a recently created repository waits until its last commit is 30 days old. Empty repositories are skipped, and a concurrent heartbeat update is re-read instead of being overwritten or duplicated. The API updates one file on the current branch tree, preserving source files; checkout still uses `persist-credentials: false`. No token is stored in git configuration or a committed file.
 
-Maintenance runs independently of Supabase availability. It does **not** change the donor feed timestamp or trigger a Pages deployment; donor membership must still change for the deploy job to run. The workflow has only schedule/manual triggers, and commits made with `GITHUB_TOKEN` do not trigger ordinary recursive workflow runs. See [GitHub's token behavior](https://docs.github.com/en/actions/concepts/security/github_token#when-github_token-triggers-workflow-runs).
+Maintenance runs independently of Supabase availability. It does **not** change the donor feed timestamp or trigger a Pages deployment; donor membership must still change for the deploy job to run. The workflow supports schedule, manual, and the filtered `main` push events described above. The heartbeat path is excluded from the push filter, and commits made with `GITHUB_TOKEN` do not trigger ordinary recursive workflow runs. See [GitHub's token behavior](https://docs.github.com/en/actions/concepts/security/github_token#when-github_token-triggers-workflow-runs).
 
 If repository rules block the maintenance commit, the job will fail rather than bypass branch protection. Permit this maintenance write in the isolated repository or make a real default-branch commit manually before the inactivity limit. A workflow already disabled by GitHub must first be re-enabled from its Actions page; a disabled workflow cannot run its own heartbeat. Scheduling remains subject to GitHub service availability and policy changes.
 
@@ -93,4 +98,4 @@ To perform a real public-feed validation after the Supabase endpoint is live:
 python -B scripts/sync_donors.py --output _site/donors.json
 ```
 
-Successful local validation does not prove that the hosted workflow or VRChat client has downloaded the feed. Verify the first real Actions deployment and published URL before marking hosting complete.
+The first hosted Actions deployment and public feed were verified as recorded above. Successful local validation or public hosting still does not prove that a VRChat client downloaded the feed or displayed a donor badge; those client and provider checks remain separate.
